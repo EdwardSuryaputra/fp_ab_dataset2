@@ -1,18 +1,14 @@
 import mahotas as mh
 import streamlit as st
 import numpy as np
-import keras
+import pickle
 from io import BytesIO
 from keras.models import model_from_json
 
 st.title('Final Project AB - Kelompok 9')
 
-json_file = open('TB-model/model.json', 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-model = model_from_json(loaded_model_json)
-# load weights into a new model
-model.load_weights('TB-model/model.h5')
+filename = 'TB-model/finalized_model.sav'
+model = pickle.load(open(filename, 'rb'))
 
 STYLE = """
 <style>
@@ -33,7 +29,7 @@ class FileUpload(object):
         Upload File on Streamlit Code
         :return:
         """
-        st.subheader("Predict Tuberculosis Using CNN")
+        st.subheader("Predict Tuberculosis Using MLP")
         st.markdown(STYLE, unsafe_allow_html=True)
         file = st.file_uploader(
             "Upload your chest x-ray image:", type=self.fileTypes)
@@ -44,7 +40,7 @@ class FileUpload(object):
             return
         content = file.getvalue()
         if isinstance(file, BytesIO):
-            lab = {'Normal': 0, 'Tuberculosis': 1}
+            lab = {'Tuberculosis': 0, 'Normal': 1}
             IMM_SIZE = 224
             show_file.image(file)
             image = mh.imread(file)
@@ -59,13 +55,12 @@ class FileUpload(object):
                 # change of colormap of images alpha chanel delete
                 image = mh.colors.rgb2grey(image[:, :, :3], dtype=np.uint8)
 
-            x_val = [image]
-            x_val = np.array(x_val) / 255
-            inputs = x_val.reshape(-1, IMM_SIZE, IMM_SIZE, 1)
+            inputs = [mh.features.haralick(image).ravel()]
+            prediction = model.predict(inputs)
 
             prediction = model.predict(inputs)
             st.code(
-                f"Prediction: {list(lab.keys())[list(lab.values()).index(np.argmax(prediction))]}")
+                f"Prediction: {np.squeeze(prediction, -1)}")
 
         file.close()
 
